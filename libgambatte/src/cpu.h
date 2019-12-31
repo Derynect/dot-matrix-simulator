@@ -13,7 +13,7 @@
 //   You should have received a copy of the GNU General Public License
 //   version 2 along with this program; if not, write to the
 //   Free Software Foundation, Inc.,
-//   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+//   51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
 #ifndef CPU_H
@@ -76,16 +76,14 @@ public:
 	void setGameShark(std::string const &codes) { mem_.setGameShark(codes); }
 
 	Memory mem_;
-	void *rombank0_ptr() const { return mem_.rombank0_ptr(); }
-
 private:
-	
 	unsigned long cycleCounter_;
 	unsigned short pc_;
 	unsigned short sp;
 	unsigned hf1, hf2, zf, cf;
 	unsigned char a_, b, c, d, e, /*f,*/ h, l;
-	bool skip_;
+	unsigned char opcode_;
+	bool prefetched_;
 
 	void process(unsigned long cycles);
 };

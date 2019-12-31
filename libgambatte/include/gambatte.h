@@ -13,7 +13,7 @@
 //   You should have received a copy of the GNU General Public License
 //   version 2 along with this program; if not, write to the
 //   Free Software Foundation, Inc.,
-//   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+//   51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
 #ifndef GAMBATTE_H
@@ -102,8 +102,6 @@ public:
 
 	/** Sets the callback used for getting the bootloader data. */
 	void setBootloaderGetter(bool (*getter)(void *userdata, bool isgbc, uint8_t *data, uint32_t buf_size));
-	void full_init();
-
 	/**
 	  * Sets the directory used for storing save data. The default is the same directory as
 	  * the ROM Image file.

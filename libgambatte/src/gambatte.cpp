@@ -13,7 +13,7 @@
 //   You should have received a copy of the GNU General Public License
 //   version 2 along with this program; if not, write to the
 //   Free Software Foundation, Inc.,
-//   59 Temple Place - Suite 330, Boston, MA  02111-1307, USA.
+//   51 Franklin St, Fifth Floor, Boston, MA  02110-1301, USA.
 //
 
 #include "gambatte.h"
@@ -22,22 +22,25 @@
 #include "savestate.h"
 #include "state_osd_elements.h"
 #include "statesaver.h"
-#include "bootloader.h"
+
 #include <cstring>
 #include <sstream>
-#include <stdio.h>
 
-static std::string const itos(int i) {
+using namespace gambatte;
+
+namespace {
+
+std::string to_string(int i) {
 	std::stringstream ss;
 	ss << i;
 	return ss.str();
 }
 
-static std::string const statePath(std::string const &basePath, int stateNo) {
-	return basePath + "_" + itos(stateNo) + ".gqs";
+std::string statePath(std::string const &basePath, int stateNo) {
+	return basePath + '_' + to_string(stateNo) + ".gqs";
 }
 
-namespace gambatte {
+}
 
 struct GB::Priv {
 	CPU cpu;
@@ -45,16 +48,13 @@ struct GB::Priv {
 	unsigned loadflags;
 
 	Priv() : stateNo(1), loadflags(0) {}
-
-	void full_init();
 };
 
 GB::GB() : p_(new Priv) {}
 
 GB::~GB() {
-	if (p_->cpu.loaded()){
+	if (p_->cpu.loaded())
 		p_->cpu.saveSavedata();
-	}
 
 	delete p_;
 }
@@ -80,33 +80,6 @@ std::ptrdiff_t GB::runFor(gambatte::uint_least32_t *const videoBuf, std::ptrdiff
 	     : cyclesSinceBlit;
 }
 
-void GB::Priv::full_init() {
-
-	SaveState state;
-	cpu.setStatePtrs(state);
-	setInitState(state, cpu.isCgb(), loadflags & GBA_CGB);
-   
-	cpu.mem_.bootloader.reset();
-	cpu.mem_.bootloader.set_address_space_start((void*)cpu.rombank0_ptr());
-	cpu.mem_.bootloader.load(cpu.isCgb(), loadflags & GBA_CGB);
-
-	if (cpu.mem_.bootloader.using_bootloader) {
-		uint8_t *ioamhram = (uint8_t*)state.mem.ioamhram.get();
-		uint8_t serialctrl = (cpu.isCgb() || loadflags & GBA_CGB) ? 0x7C : 0x7E;
-		state.cpu.pc = 0x0000;
-		// the hw registers must be zeroed out to prevent the logo from being garbled
-		std::memset((void*)(ioamhram + 0x100), 0x00, 0x100);
-		//init values taken from SameBoy
-		ioamhram[0x100] = 0xCF;//joypad initial value
-		ioamhram[0x102] = serialctrl;//serialctrl
-		ioamhram[0x148] = 0xFC;//object palette 0
-		ioamhram[0x149] = 0xFC;//object palette 1
-	}
-   
-	cpu.loadState(state);
-	cpu.loadSavedata();
-}
-
 void GB::reset() {
 	if (p_->cpu.loaded()) {
 		p_->cpu.saveSavedata();
@@ -116,7 +89,6 @@ void GB::reset() {
 		setInitState(state, p_->cpu.isCgb(), p_->loadflags & GBA_CGB);
 		p_->cpu.loadState(state);
 		p_->cpu.loadSavedata();
-		//p_->full_init();
 	}
 }
 
@@ -127,7 +99,6 @@ void GB::setInputGetter(InputGetter *getInput) {
 void GB::setBootloaderGetter(bool (*getter)(void* userdata, bool isgbc, uint8_t* data, uint32_t max_size)) {
    p_->cpu.mem_.bootloader.set_bootloader_getter(getter);
 }
-
 void GB::setSaveDir(std::string const &sdir) {
 	p_->cpu.setSaveDir(sdir);
 }
@@ -140,15 +111,14 @@ LoadRes GB::load(std::string const &romfile, unsigned const flags) {
 	                                     flags & FORCE_DMG,
 	                                     flags & MULTICART_COMPAT);
 	if (loadres == LOADRES_OK) {
-		//SaveState state;
-		//p_->cpu.setStatePtrs(state);
-		//p_->loadflags = flags;
-		//setInitState(state, p_->cpu.isCgb(), flags & GBA_CGB);
-		//p_->cpu.loadState(state);
-		//p_->cpu.loadSavedata();
-		p_->full_init();
+		SaveState state;
+		p_->cpu.setStatePtrs(state);
+		p_->loadflags = flags;
+		setInitState(state, p_->cpu.isCgb(), flags & GBA_CGB);
+		p_->cpu.loadState(state);
+		p_->cpu.loadSavedata();
 
-		p_->stateNo = 0;
+		p_->stateNo = 1;
 		p_->cpu.setOsdElement(transfer_ptr<OsdElement>());
 	}
 
@@ -164,10 +134,8 @@ bool GB::isLoaded() const {
 }
 
 void GB::saveSavedata() {
-	if (p_->cpu.loaded()){
+	if (p_->cpu.loaded())
 		p_->cpu.saveSavedata();
-		printf("Saving savedata...\n");
-	}
 }
 
 void GB::setDmgPaletteColor(int palNum, int colorNum, unsigned long rgb32) {
@@ -182,12 +150,11 @@ bool GB::loadState(std::string const &filepath) {
 	if (p_->cpu.loaded()) {
 		p_->cpu.saveSavedata();
 
-		SaveState state;
+		SaveState state = SaveState();
 		p_->cpu.setStatePtrs(state);
 
 		if (StateSaver::loadState(state, filepath)) {
 			p_->cpu.loadState(state);
-			p_->cpu.mem_.bootloader.choosebank(state.mem.ioamhram.get()[0x150] != 0xFF);
 			return true;
 		}
 	}
@@ -283,4 +250,3 @@ void GB::setGameShark(std::string const &codes) {
 	p_->cpu.setGameShark(codes);
 }
 
-}
